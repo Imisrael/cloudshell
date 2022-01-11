@@ -32,7 +32,7 @@ start:
 
 # runs the application in packaged form
 run: package
-	docker run -it -p 8376:8376 $(image_url):latest
+	docker run  --network griddb-net -d -it -p 8376:8376 $(image_url):latest
 
 # builds the application binary
 build:

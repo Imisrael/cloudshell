@@ -23,17 +23,40 @@ COPY ./package.json .
 COPY ./package-lock.json .
 RUN npm install
 
-FROM alpine:3.14.0
+FROM centos:7
+
+RUN rpm -Uvh https://github.com/griddb/griddb/releases/download/v4.6.1/griddb-4.6.1-linux.x86_64.rpm
+RUN rpm -Uvh https://github.com/griddb/cli/releases/download/v4.6.0/griddb-ce-cli-4.6.0-linux.x86_64.rpm
+RUN yum -y install iproute
+RUN yum install -y \
+       java-1.8.0-openjdk \
+       java-1.8.0-openjdk-devel
+ADD https://repo1.maven.org/maven2/com/github/griddb/gridstore-jdbc/4.5.0/gridstore-jdbc-4.5.0.jar /usr/share/java
+
+ENV GS_HOME /var/lib/gridstore
+ENV GS_LOG $GS_HOME/log
+ENV HOME $GS_HOME
+WORKDIR $HOME
+ADD start_griddb.sh /
+
 WORKDIR /app
-RUN apk add --no-cache bash ncurses
 COPY --from=backend /go/src/cloudshell/bin/cloudshell /app/cloudshell
 COPY --from=frontend /app/node_modules /app/node_modules
 COPY ./public /app/public
 RUN ln -s /app/cloudshell /usr/bin/cloudshell
-RUN adduser -D -u 1000 user
+RUN useradd -ms /bin/bash user
 RUN mkdir -p /home/user
 RUN chown user:user /app -R
 WORKDIR /
 ENV WORKDIR=/app
+
+USER gsadm
+WORKDIR $HOME
+
+CMD /start_griddb.sh
+EXPOSE 10001 10010 10020 10030 10040 10050 10080 20001 2375 80 443 8376
+
 USER user
+WORKDIR /app
 ENTRYPOINT ["/app/cloudshell"]
+CMD ["--allowed-hostnames", "52.250.124.168", "--command", "/usr/bin/gs_sh"]
